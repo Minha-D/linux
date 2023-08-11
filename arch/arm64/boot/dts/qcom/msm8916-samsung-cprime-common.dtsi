@@ -12,19 +12,35 @@
 			no-map;
 		};
 	};
-};
 
-&blsp_i2c1 {
-	/* SM5504 MUIC instead of SM5502 */
+	i2c-muic {
+		compatible = "i2c-gpio";
+		sda-gpios = <&tlmm 2 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&tlmm 3 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&muic_i2c_default>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* SM5504 MUIC instead of SM5502 */
 	/delete-node/ extcon@25;
 
-	muic: extcon@14 {
+		muic: extcon@14 {
 		compatible = "siliconmitus,sm5504-muic";
 		reg = <0x14>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <12 IRQ_TYPE_EDGE_FALLING>;
 		pinctrl-0 = <&muic_int_default>;
 		pinctrl-names = "default";
+
+			usb_con: connector {
+				compatible = "usb-b-connector";
+				label = "micro-USB";
+				type = "micro";
+			};
+		};
 	};
 };
 
