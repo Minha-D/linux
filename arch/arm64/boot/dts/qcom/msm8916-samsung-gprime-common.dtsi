@@ -98,6 +98,35 @@
 		pinctrl-names = "default";
 	};
 
+	i2c-muic {
+		compatible = "i2c-gpio";
+		sda-gpios = <&tlmm 2 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&tlmm 3 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&muic_i2c_default>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		muic: extcon@25 {
+			compatible = "siliconmitus,sm5502-muic";
+
+			reg = <0x25>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <12 IRQ_TYPE_EDGE_FALLING>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&muic_int_default>;
+
+			usb_con: connector {
+				compatible = "usb-b-connector";
+				label = "micro-USB";
+				type = "micro";
+			};
+		};
+	};
+
 	i2c_nfc: i2c-nfc {
 		compatible = "i2c-gpio";
 		sda-gpios = <&tlmm 0 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
@@ -146,18 +175,14 @@
 			status = "disabled";
 		};
 	};
-};
 
-&blsp_i2c1 {
-	status = "okay";
-
-	muic: extcon@25 {
-		compatible = "siliconmitus,sm5502-muic";
-		reg = <0x25>;
-		interrupt-parent = <&tlmm>;
-		interrupts = <12 IRQ_TYPE_EDGE_FALLING>;
-		pinctrl-0 = <&muic_int_default>;
-		pinctrl-names = "default";
+	battery: battery {
+		compatible = "simple-battery";
+		precharge-current-microamp = <450000>;
+		constant-charge-current-max-microamp = <1000000>;
+		charge-term-current-microamp = <200000>;
+		precharge-upper-limit-microvolt = <3500000>;
+		constant-charge-voltage-max-microvolt = <4350000>;
 	};
 };
 
@@ -237,15 +262,17 @@
 &blsp_i2c4 {
 	status = "okay";
 
-	battery@35 {
+	fuel-gauge@35 {
 		compatible = "richtek,rt5033-battery";
 		reg = <0x35>;
 
 		interrupt-parent = <&tlmm>;
 		interrupts = <121 IRQ_TYPE_EDGE_FALLING>;
 
-		pinctrl-0 = <&fg_alert_default>;
 		pinctrl-names = "default";
+		pinctrl-0 = <&fg_alert_default>;
+
+		power-supplies = <&rt5033_charger>;
 	};
 };
 
@@ -269,6 +296,43 @@
 		pinctrl-names = "default";
 
 		linux,keycodes = <KEY_APPSELECT KEY_BACK>;
+	};
+};
+
+&blsp_i2c6 {
+	status = "okay";
+
+	pmic@34 {
+		compatible = "richtek,rt5033";
+		reg = <0x34>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <62 IRQ_TYPE_EDGE_FALLING>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&pmic_int_default>;
+
+		regulators {
+			rt5033_reg_safe_ldo: SAFE_LDO {
+				regulator-min-microvolt = <4900000>;
+				regulator-max-microvolt = <4900000>;
+				regulator-always-on;
+			};
+			rt5033_reg_ldo: LDO {
+				regulator-min-microvolt = <2800000>;
+				regulator-max-microvolt = <2800000>;
+			};
+			rt5033_reg_buck: BUCK {
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <1200000>;
+			};
+		};
+
+		rt5033_charger: charger {
+			compatible = "richtek,rt5033-charger";
+			monitored-battery = <&battery>;
+			richtek,usb-connector = <&usb_con>;
+		};
 	};
 };
 
@@ -455,6 +519,14 @@
 		bias-disable;
 	};
 
+	muic_i2c_default: muic-i2c-default-state {
+		pins = "gpio2", "gpio3";
+		function = "gpio";
+
+		drive-strength = <2>;
+		bias-disable;
+	};
+
 	muic_int_default: muic-int-default-state {
 		pins = "gpio12";
 		function = "gpio";
@@ -481,6 +553,14 @@
 	nfc_i2c_default: nfc-i2c-default-state {
 		pins = "gpio0", "gpio1";
 		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	pmic_int_default: pmic-int-default-state {
+		pins = "gpio62";
+		function = "gpio";
+
 		drive-strength = <2>;
 		bias-disable;
 	};
